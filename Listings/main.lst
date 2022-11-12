@@ -1,0 +1,293 @@
+C51 COMPILER V9.57.0.0   MAIN                                                              11/12/2022 18:32:13 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <reg51.h>
+   2          #include <111602.h>
+   3          #include <stdio.h>
+   4          #include <stdlib.h>
+   5          
+   6          sbit k0 = P1 ^ 0; //add
+   7          sbit k1 = P1 ^ 1; //sub
+   8          sbit k2 = P1 ^ 2; //change
+   9          sbit k3 = P1 ^ 3; //enter
+  10          sbit k4 = P1 ^ 4; //restart
+  11          
+  12          #define uchar unsigned char
+  13          #define uint unsigned int
+  14          
+  15          void init();//初始化,通电,初始化111602.h,设置
+  16          void set_random_num();//设置随机数,真随机需要time.h,这里用rand()函数,属于假随机
+  17          void re_delay(int n);//重写了111602.h中的delay函数,用来计时5s,uchar最大是244,将uchar改写�
+             -��了int,
+  18          void my_delay();//消抖函数
+  19          void show_top_string(char my_string[]);//显示顶部字符串,第一行,0x00
+  20          void show_bottom_string(char my_string[]);//显示底部字符串,第二行,0x40
+  21          void show_value();//显示用户输入的当前值
+  22          void show_win();//显示胜利的页面,专门写一个函数,因为要显示胜利的所尝试的次数
+  23          void set_ten();//调数函数,这是调十位数的
+  24          void set_unit();//调数函数,这是调个位数的
+  25          void compare();//比较函数,用来比较用户输入的值和随机数的大小
+  26          void scan_key();//扫描按键函数
+  27          void index_page();//首页函数,显示欢迎页面
+  28          void reset_game();//重置游戏函数,用来重置游戏,重新开始
+  29          
+  30          int random_num = 0;
+  31          /*猜数字小游戏,电脑随机产生一个数字,玩家输入,如果大了,就输出大了,如果小了
+             -,就输出小了,然后继续猜,直到猜对为止*/
+  32          
+  33          const uint len_line = 16;//一行的最大字符数
+  34          const uchar my_nums[] = "0123456789";//用来显示数字的字符数组
+  35          const uchar win_string[] = "guess count:";//胜利页面的基础字符串
+  36          uint i;//循环用,每次使用前会重新赋值
+  37          uint guess_num = 0;//用户输入的数字
+  38          uint key = 0;// 0:锁定输入 1:修改十位 2:修改个位
+  39          uint enter_flag = 0;//是否按下了enter键,第一次按下enter键:开始游戏,第二次按下enter键
+             -:调用比较函数,检查输入是否和随机数相等
+  40          uint guess_count = 0;//尝试的次数
+  41          
+  42          void init() {//must, only run once
+  43   1          EA = 1;
+  44   1          ET0 = 1;
+  45   1          TMOD = 0X11;
+  46   1          TH0 = (65536 - 50000) / 256;
+  47   1          TL0 = (65536 - 50000) % 256;
+  48   1          TR0 = 1;
+  49   1          /*---------------------------*/
+  50   1          LcdInitiate();//init 111602.h
+  51   1          WriteAddress(0x00);
+C51 COMPILER V9.57.0.0   MAIN                                                              11/12/2022 18:32:13 PAGE 2   
+
+  52   1          delay(5);//must, only run once
+  53   1      }
+  54          
+  55          void set_random_num() {
+  56   1          //random get a num from 0 to 99
+  57   1          random_num = rand() % 100 + 1;
+  58   1      }
+  59          
+  60          void re_delay(int n)
+  61          {
+  62   1          i=0;
+  63   1          for(i;i<n;i++)
+  64   1              delay1ms();
+  65   1      }
+  66          
+  67          void my_delay() {
+  68   1          //delay
+  69   1          uint j = 0;
+  70   1          for (j; j < 26000; j++);
+  71   1      }
+  72          
+  73          void show_top_string(char my_string[]) {
+  74   1          //print specify string as top line
+  75   1          WriteAddress(0x00);
+  76   1      
+  77   1          i = 0;
+  78   1          for (i; i < len_line; i++) {
+  79   2              WriteData(my_string[i]);
+  80   2          }
+  81   1      }
+  82          
+  83          void show_bottom_string(char my_string[]) {
+  84   1          //print specify string as bottom line
+  85   1          WriteAddress(0x40);
+  86   1          i = 0;
+  87   1          for (i; i < len_line; i++) {
+  88   2              WriteData(my_string[i]);
+  89   2          }
+  90   1      }
+  91          
+  92          void show_value() {
+  93   1          WriteAddress(0x40);
+  94   1          WriteData('u');
+  95   1          WriteData(' ');
+  96   1          WriteData('i');
+  97   1          WriteData('n');
+  98   1          WriteData('p');
+  99   1          WriteData('u');
+ 100   1          WriteData('t');
+ 101   1          WriteData(':');
+ 102   1          WriteData(my_nums[guess_num / 100]);
+ 103   1          WriteData(my_nums[guess_num % 100 / 10]);
+ 104   1          WriteData(my_nums[guess_num % 10]);
+ 105   1      
+ 106   1      //    //debug,show random num
+ 107   1      //    WriteData(my_nums[random_num/100]);
+ 108   1      //    WriteData(my_nums[random_num%100 / 10]);
+ 109   1      //    WriteData(my_nums[random_num%10]);
+ 110   1      }
+ 111          
+ 112          void show_win() {
+ 113   1          show_top_string("    YOU WIN!    ");
+C51 COMPILER V9.57.0.0   MAIN                                                              11/12/2022 18:32:13 PAGE 3   
+
+ 114   1          WriteAddress(0x40);
+ 115   1          i = 0;
+ 116   1          for (i; i < 13; i++) {
+ 117   2              WriteData(win_string[i]);
+ 118   2          }
+ 119   1      
+ 120   1          WriteData(my_nums[guess_count / 100]);
+ 121   1          WriteData(my_nums[guess_count % 100 / 10]);
+ 122   1          WriteData(my_nums[guess_count % 10]);
+ 123   1      
+ 124   1          re_delay(5000);//delay 5s
+ 125   1      }
+ 126          
+ 127          void set_ten() {
+ 128   1          //set ten
+ 129   1          if (k0 == 0) {
+ 130   2              my_delay();
+ 131   2              if (k0 == 0) { guess_num = guess_num + 10; }
+ 132   2          }
+ 133   1      
+ 134   1          if (k1 == 0) {
+ 135   2              my_delay();
+ 136   2              if (k1 == 0) {
+ 137   3                  if (guess_num < 10) { guess_num = 99; }
+ 138   3                  else { guess_num = guess_num - 10; }
+ 139   3              }
+ 140   2          }
+ 141   1      }
+ 142          
+ 143          void set_unit() {
+ 144   1          //set unit
+ 145   1          if (k0 == 0) {
+ 146   2              my_delay();
+ 147   2              if (k0 == 0) { guess_num++; }
+ 148   2          }
+ 149   1          if (k1 == 0) {
+ 150   2              my_delay();
+ 151   2              if (k1 == 0) {
+ 152   3                  if (guess_num == 0) { guess_num = 99; }
+ 153   3                  else { guess_num--; }
+ 154   3              }
+ 155   2          }
+ 156   1      }
+ 157          
+ 158          void compare() {
+ 159   1          //compare user guess num and random num
+ 160   1      //    show_bottom_string();
+ 161   1          if (guess_num == random_num) {
+ 162   2              enter_flag = 0;//reset enter flag
+ 163   2              key = 0;//reset key,lock input
+ 164   2              show_win();
+ 165   2              reset_game();
+ 166   2              index_page();//show index page
+ 167   2          } else if (guess_num > random_num) {
+ 168   2              show_top_string("    TOO BIG!    ");
+ 169   2              show_bottom_string("                ");
+ 170   2              enter_flag = 1;
+ 171   2          } else if (guess_num < random_num) {
+ 172   2              show_top_string("   TOO SMALL!   ");
+ 173   2              show_bottom_string("                ");
+ 174   2              enter_flag = 1;
+ 175   2          }
+C51 COMPILER V9.57.0.0   MAIN                                                              11/12/2022 18:32:13 PAGE 4   
+
+ 176   1      }
+ 177          
+ 178          void scan_key() {
+ 179   1          //hook key press event
+ 180   1          if (k3 == 0) {//enter
+ 181   2              my_delay();
+ 182   2              if (k3 == 0) {
+ 183   3                  enter_flag++;
+ 184   3                  if (enter_flag == 1) {//first press enter,start game
+ 185   4                      show_top_string("INP U GUESS NUM:");
+ 186   4                      show_bottom_string("                ");
+ 187   4                      show_value();
+ 188   4                      key = 1;//press enter,unlock input
+ 189   4                  }
+ 190   3              }
+ 191   2          }
+ 192   1      
+ 193   1          if (enter_flag == 2) {//second press enter,compare user input num and random num
+ 194   2              guess_count++;compare();
+ 195   2          }
+ 196   1      
+ 197   1          /***********-------------------------***********/
+ 198   1          if (key != 0) {
+ 199   2              if (k2 == 0) {//change set
+ 200   3                  my_delay();
+ 201   3                  if (k2 == 0) {
+ 202   4                      key++;
+ 203   4                      if (key > 2) { key = 1; }
+ 204   4                  }
+ 205   3              }
+ 206   2              if (key == 1) {//first set unit
+ 207   3                  set_unit();
+ 208   3                  show_value();
+ 209   3              } else if (key == 2) {//second set ten
+ 210   3                  set_ten();
+ 211   3                  show_value();
+ 212   3              }
+ 213   2          }
+ 214   1      
+ 215   1          /***********-------------------------***********/
+ 216   1          if (k4 == 0) {//restart
+ 217   2              my_delay();
+ 218   2              if (k4 == 0) {
+ 219   3                  reset_game();
+ 220   3                  index_page();//show index page
+ 221   3              }
+ 222   2          }
+ 223   1      }
+ 224          
+ 225          void index_page() {
+ 226   1          show_top_string(" GUESS NUM GAME ");
+ 227   1          show_bottom_string(" scope : [1,100] ");
+ 228   1      }
+ 229          
+ 230          void reset_game() {
+ 231   1          //reset game
+ 232   1          guess_num = 0;//reset value
+ 233   1          guess_count = 0;//reset count
+ 234   1          enter_flag = 0;//reset enter flag
+ 235   1          key = 0;//reset key,lock input
+ 236   1          set_random_num();//set random num
+ 237   1      }
+C51 COMPILER V9.57.0.0   MAIN                                                              11/12/2022 18:32:13 PAGE 5   
+
+ 238          
+ 239          void main() {
+ 240   1          set_random_num();
+ 241   1          init();
+ 242   1          index_page();
+ 243   1          while (1) {
+ 244   2              scan_key();
+ 245   2          }
+ 246   1      }
+ 247          
+ 248          
+ 249          void timer() interrupt 1 {
+ 250   1          if (guess_num > 100) {
+ 251   2              guess_num = 0;
+ 252   2          }
+ 253   1      
+ 254   1          TH0 = (65536 - 50000) / 256;
+ 255   1          TL0 = (65536 - 50000) % 256;
+ 256   1      }
+ 257          
+ 258          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1002    ----
+   CONSTANT SIZE    =    120    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     38       6
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

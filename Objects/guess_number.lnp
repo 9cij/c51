@@ -1,0 +1,4 @@
+".\Objects\STARTUP.obj",
+".\Objects\main.obj" 
+TO ".\Objects\guess_number" 
+PRINT(".\Listings\guess_number.m51")
